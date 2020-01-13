@@ -1,5 +1,7 @@
 # README: `rubylib`
 
+This is currently a work-in-progress repo; starting 1/13/2020.
+
 This is my latest attempt to consoldate common ruby functions into modules and classes that 
 are simple to use and extend.  I'm new to modules so go easy on me while I understand the
 tradeoffs.
