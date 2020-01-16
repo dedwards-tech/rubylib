@@ -7,13 +7,27 @@ module TimestampNumeric
   def timestamp(value=nil)
     if value.nil?
       # make sure there's always an initial value
-      @timestamp ||= 0
+      @timestamp ||= BigDecimal(0, _bigd_precision)
     else
       unless (value.is_a?(self.class) or value.is_a?(Numeric))
         raise TypeError, "#{value.class} can't be coerced into #{self.class}"
       end
-      @timestamp = value.to_i
+      @timestamp = BigDecimal(value, _bigd_precision)
     end
+  end
+
+  def _bigd_precision
+    16
+  end
+
+  def time_to_ns(time_t)
+    raise ArgumentError('time_t arg MUST implement to_f') unless time_t.respond_to?(:to_f)
+    time_f_to_ns(time_t.to_f)
+  end
+
+  def time_f_to_ns(time_f)
+    # don't allow floating point math errors to affect conversion to nano-seconds
+    BigDecimal(time_f * (10**9), _bigd_precision).to_i
   end
 
   def to_s
@@ -66,6 +80,7 @@ module TimestampNumeric
         raise TypeError, "#{other.class} subtract: cant be coerced into #{self.class}"
       end
     end
+
   end
 
   def *(other)
@@ -97,41 +112,34 @@ module TimestampNumeric
       end
     end
   end
+
+  def method_missing(name, *args, &block)
+    #puts("NOTE: passing method :#{name} to timestamp class #{timestamp.class}, args=#{args.to_s}")
+    # any math, coersion or other methods not implemented by this class
+    # will forward method calls to the instance var
+    timestamp.send(name, *args, &block)
+  end
+
 end
 
 class TimestampNS
   include TimestampNumeric
 
-  def _bigd_precision
-    16
-  end
-
-  def time_to_ns(time_t)
-    raise ArgumentError('time_t arg MUST implement to_f') unless time_t.respond_to?(:to_f)
-    time_f_to_ns(time_t.to_f)
-  end
-
-  def time_f_to_ns(time_f)
-    # don't allow floating point math errors to affect conversion to nano-seconds
-    BigDecimal(time_f * (10**9), _bigd_precision).to_i
-  end
-
   def initialize(time_in=nil)
     if time_in.nil?
       # convert the current time to nano-seconds since epoch,
       # only if @time_ns is not initialized
-      time_ns = time_f_to_ns(Time.now.to_f)
+      time_ns = time_to_ns(Time.now)
     else
-      if time_in.is_a?(Time) or time_in.is_a?(Float)
-        time_ns = time_f_to_ns(time_in.to_f)
+      if time_in.is_a?(Time)
+        time_ns = time_to_ns(time_in)
       elsif time_in.is_a?(String)
-        # ISO 8669 Translation
+        # translate from format: <hours>:<minutes>:<seconds>.<nanoseconds>
         tokens  = time_in.split(':')
         hours   = BigDecimal(tokens[0], 9) * BigDecimal('60.0', 9) * BigDecimal('60.0', 9)
         minutes = BigDecimal(tokens[1], 9) * BigDecimal('60.0', 9)
-        time_f  = BigDecimal(tokens[2], 9) + minutes + hours
-        time_ns = time_f_to_ns(time_f)
-      else
+        time_ns = BigDecimal(tokens[2], 9) + minutes + hours
+      elsif time_in.is_a?(Numeric)
         time_ns = time_in
       end
     end
@@ -140,10 +148,4 @@ class TimestampNS
     timestamp(time_ns)
   end
 
-  def method_missing(name, *args, &block)
-    puts("NOTE: passing method :#{name} to timestamp class #{timestamp.class}, args=#{args.to_s}")
-    # any math, coersion or other methods not implemented by this class
-    # will forward method calls to the instance var
-    timestamp.send(name, *args, &block)
-  end
 end
