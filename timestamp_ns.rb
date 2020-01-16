@@ -122,10 +122,15 @@ class TimestampNS
       # only if @time_ns is not initialized
       time_ns = time_f_to_ns(Time.now.to_f)
     else
-      if time_in.is_a?(Time)
+      if time_in.is_a?(Time) or time_in.is_a?(Float)
         time_ns = time_f_to_ns(time_in.to_f)
-      elsif time_in.is_a?(Float)
-        raise TypeError, "cannot use Float as a value of time in nano-seconds"
+      elsif time_in.is_a?(String)
+        # ISO 8669 Translation
+        tokens  = time_in.split(':')
+        hours   = BigDecimal(tokens[0], 9) * BigDecimal('60.0', 9) * BigDecimal('60.0', 9)
+        minutes = BigDecimal(tokens[1], 9) * BigDecimal('60.0', 9)
+        time_f  = BigDecimal(tokens[2], 9) + minutes + hours
+        time_ns = time_f_to_ns(time_f)
       else
         time_ns = time_in
       end
