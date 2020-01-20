@@ -1,25 +1,6 @@
 require 'optparse'
 require 'ostruct'
 
-module ConsoleUtils
-  def set_verbose(value=true)
-    @verbose = value
-  end
-
-  def is_verbose
-    @verbose ||= false
-  end
-
-  def set_dryrun(value=true)
-    @dryrun = value
-  end
-
-  def is_dryrun
-    @dryrun ||= false
-  end
-end
-
-
 # Design goals:
 #  * use object to directly reference argument vars
 #  * make block initializers optional for most simple arguments
@@ -75,7 +56,7 @@ module CliOptionBase
   end
 end
 
-class CliHelper
+class CliOptionsHelper
   include CliOptionBase
   attr_accessor :parser
 

@@ -42,6 +42,13 @@ end
 module UserLoginCredential
   include CredentialBase
 
+  def user_login
+    credential.merge!({ :user_name  => nil,
+                        :user_group => nil,
+                        :user_pwd   => nil } )
+    credential
+  end
+
   def set_user_login(user_name, user_pwd, user_group=nil)
     if user_name.nil? || user_pwd.nil?
       raise ArgumentError, 'ERR: user name / pwd not set!'
@@ -73,23 +80,3 @@ module UserLoginCredential
   end
 end
 
-
-module SshCredential
-  include UserLoginCredential
-
-  def set_ssh(server_ip, user_name, user_pwd, user_group=nil)
-    if server_ip.nil?
-      raise ArgumentError, 'ERR: server_ip is not set!'
-    end
-    set_user_login(user_name, user_pwd, user_group)
-    credential.merge!( { :server_ip  => server_ip } )
-  end
-
-  def server_ip
-    credential.fetch(:server_ip, nil)
-  end
-
-  def to_s
-    "ip: #{server_ip}, user name: #{user_name}(#{user_group})"
-  end
-end

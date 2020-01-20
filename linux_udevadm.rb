@@ -1,4 +1,4 @@
-require_relative 'linux_exec'
+require_relative 'linux_exec_helper'
 
 class LinuxUdevadmHelper < LinuxExecHelper
   attr_reader :kernel

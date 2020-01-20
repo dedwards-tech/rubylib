@@ -1,5 +1,6 @@
 require 'json'
-require_relative 'linux_exec'
+require_relative 'linux_exec_helper'
+require_relative 'ssh_helper'
 
 @command_list = [
     { :name => 'KERNEL_VERSION',   :cmd_str => 'uname -a' },
@@ -13,6 +14,16 @@ require_relative 'linux_exec'
     { :name => 'UDEVADM_INFO_Q_DBDF', :cmd_str => 'udevadm info -q all -p /sys/bus/pci/devices/{}', :deps => [ 'LSPCI_DBDF_NVME' ] }
 ]
 
+@commands_no_deps = [
+    { :name => 'KERNEL_VERSION',   :cmd_str => 'uname -a' },
+    { :name => 'LSPCI_VERSION',    :cmd_str => 'lspci --version' },
+    { :name => 'LSPCI_DBDF_NVME',  :cmd_str => 'lspci -D | grep Non-' },
+    { :name => 'LSPCI_D_VERBOSE',  :cmd_str => 'lspci -Dvvv' },
+    { :name => 'NVME_DEV_NODES',   :cmd_str => 'find /dev -name nvme* -type c' },
+    { :name => 'NVME_NS_NODES',    :cmd_str => 'find /dev -name nvme* -type b' },
+    { :name => 'UDEVADM_VERSION',  :cmd_str => 'udevadm --version' },
+]
+
 def get_result(name)
   result = []
   @command_list.each do |cmd_data|
@@ -23,9 +34,22 @@ def get_result(name)
   result
 end
 
+class JenkinsSshConnector
+  include SshHelper
+
+  def initialize(ip_address, verbose:false)
+    test_ip   = ip_address
+    test_user = 'jenkins'
+    test_pwd  = '123456'
+
+    set_ssh(test_ip, test_user, test_pwd)
+    set_verbose(verbose)
+  end
+end
+
 lin_ex = LinuxExecHelper.new(verbose:true)
 
-@command_list.each do |cmd_data|
+@commands_no_deps.each do |cmd_data|
   cmd_name  = cmd_data[:name]
   cmd_str   = cmd_data[:cmd_str]
   deps      = cmd_data.fetch(:deps, nil)
@@ -64,4 +88,4 @@ lin_ex = LinuxExecHelper.new(verbose:true)
   end
 end
 
-puts(@command_list.to_json)
+puts(@commands_no_deps.to_json)

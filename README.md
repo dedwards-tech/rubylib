@@ -24,3 +24,6 @@ tradeoffs.
     * `ScpHelper` - basic SCP connect and file upload / download methods.
 * `zip_helper.rb` - file compression helpers.
     * `ZipHelper` - wrapper around `rubyzip` for simplifying .zip file decompress.
+* `linux_exec.rb` - linux shell exec helper, use conjunction with `ssh_helper`.
+* `linux_udevadm.rb` - udev admin manager helpers, for collecting udev device details.
+    * `get_host_data.rb` - helper for collecting platform data collection simulation and re-use.
