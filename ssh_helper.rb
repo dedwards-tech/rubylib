@@ -25,6 +25,10 @@ class SshCredential
     end
   end
 
+  def server_ip
+    credential.fetch(:server_ip, nil)
+  end
+
   def chk_ssh_credential
     if server_ip.nil?
       raise ArgumentError, 'ERR: server_ip is NOT set, and required.'
@@ -44,49 +48,44 @@ class SshCredential
     set_user_login(user_name, user_pwd, user_group)
   end
 
-  def server_ip
-    credential.fetch(:server_ip, nil)
-  end
-
   def to_s
     "ip: #{server_ip}, user name: #{user_name}(#{user_group})"
   end
 end
 
 module SshExecHelper
-  include CommonConsoleVars
   include ShellExec
 
-  def timeout
-    @timeout ||= 2 * 60
+  def session
+    @session
   end
 
   def ssh_connect(ssh_credential, **opts)
-    @timeout  = opts.fetch(:timeout,  timeout)
-    @verbose  = opts.fetch(:dry_run,  dryrun)
-    @use_sudo = opts.fetch(:use_sudo, use_sudo)
+    # called once per init, sets "global" options.
+    vars_merge!(opts)
     begin
+      timeout  = opts.fetch(:timeout, 2 * 60)
+      if verbose
+        verbosity = Logger::DEBUG
+      else
+        verbosity = Logger::ERROR
+      end
+
       @session = Net::SSH.start(ssh_credential.server_ip,
                                 ssh_credential.user_name,
                                 password:ssh_credential.user_pwd,
                                 timeout:timeout,
-                                verbose:is_verbose)
+                                verbose:verbosity)
     rescue => ex
+      puts("ERR: cannot connect SSH to host #{server_ip}, response: #{ex.message}")
       @session = nil
-      puts("ERR: cannot connect SSH to host #{server_ip}, response: #{ex.to_s}")
     end
-
-    # create an ssh based cmd exec context
-    cmd_exec(cmd_exec:new_ssh_shell(opts))
+    @session
   end
 
   def ssh_disconnect
     @session.close() unless @session.nil?
     @session = nil
-  end
-
-  def session
-    @session
   end
 
   def ssh_owner_ug
@@ -98,19 +97,26 @@ module SshExecHelper
   end
 
   def new_ssh_shell(**opts)
-    _new_proc(opts) do |cmd_str|
-      puts(" -> SSH: #{cmd_str}") if verbose
-      $stdout.flush
+    # called once per shell, allows overwrite of select "global" options.
+    vars_merge!(opts)
+    @cmd_exec = lambda do |cmd_str, loc_vars|
+      puts(" -> #{cmd_str}") if loc_vars.verbose
       exit_code  = 0
       output     = ''
-      rem_cmd    = 'sudo ' + cmd_str if use_sudo
+      cmd_str   += 'sudo ' + cmd_str if use_sudo
       unless dryrun
-        session.exec(rem_cmd) do |ch, stream, data|
+        $stdin.flush
+        $stdout.flush
+        $stderr.flush
+        session.exec(cmd_str) do |ch, stream, data|
           exit_code  = 1 if stream == :stderr
           output    += data
         end
         # now let the session do its thing while we wait!
         session.loop
+        $stderr.flush
+        $stdout.flush
+        $stdin.flush
       end
       [ output, exit_code ]
     end
@@ -123,12 +129,13 @@ class LinuxExecRemoteSsh
 
   def initialize(ssh_credential, **opts)
     if ssh_credential.is_a?(SshCredential)
-      ssh_credential.chk_credential
+      ssh_credential.chk_ssh_credential
+      new_ssh_shell(**opts)
       ssh_connect(ssh_credential, opts)
     end
 
     # get the kernel version
-    ret_str, exit_code = _exec("uname -a")
+    ret_str, exit_code = cmd_exec("uname -a")
     if exit_code == 0
       @version = ret_str.strip.chomp
     else
@@ -136,5 +143,5 @@ class LinuxExecRemoteSsh
     end
   end
 
-  # use the _exec(cmd_str) method to invoke remote ssh requests!
+  # use the cmd_exec(cmd_str) method to invoke remote ssh requests!
 end

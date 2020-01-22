@@ -1,8 +1,7 @@
 require 'test/unit'
-require 'optparse'
-require_relative File.join('..', 'console_utils')
+require_relative File.join('..', 'cli_options_helper')
 
-class UnitTest_ConsoleUtils < Test::Unit::TestCase
+class UnitTest_CliOptionsHelper < Test::Unit::TestCase
   def test_1_cli_helper_simple
     my_cli = CliHelper.new
     my_cli.new_simple('t_var1', 'tvar1_value', '--tvar1 [STR]',

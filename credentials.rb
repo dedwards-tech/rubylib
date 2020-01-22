@@ -39,6 +39,8 @@ module CredentialBase
 end
 
 
+# TODO: redo this class using OpenStruct - much cleaner to modify!!!
+
 module UserLoginCredential
   include CredentialBase
 
@@ -57,10 +59,12 @@ module UserLoginCredential
     credential.merge!( { :user_name  => user_name,
                          :user_group => user_group,
                          :user_pwd   => user_pwd } )
+    credential
   end
 
   def set_user_group(group_id)
     credential[:user_group] = group_id
+    credential
   end
 
   def user_name

@@ -6,14 +6,27 @@ module TimestampNumeric
 
   def timestamp(value=nil)
     if value.nil?
-      # make sure there's always an initial value
-      @timestamp ||= BigDecimal(0, _bigd_precision)
+      # convert the current time to nano-seconds since epoch,
+      # only if @time_ns is not initialized
+      @timestamp ||= time_to_ns(Time.now)
     else
-      unless (value.is_a?(self.class) or value.is_a?(Numeric))
+      if value.is_a?(self.class)
+        @timestamp = value.timestamp
+      elsif value.is_a?(Numeric)
+        @timestamp = BigDecimal(value, _bigd_precision)
+      elsif value.is_a?(Time)
+        @timestamp = time_to_ns(value)
+      elsif value.is_a?(String)
+        # translate from format: <hours>:<minutes>:<seconds>.<nanoseconds>
+        tokens  = time_in.split(':')
+        hours   = BigDecimal(tokens[0], 9) * BigDecimal('60.0', 9) * BigDecimal('60.0', 9)
+        minutes = BigDecimal(tokens[1], 9) * BigDecimal('60.0', 9)
+        @timestamp = BigDecimal(tokens[2], 9) + minutes + hours
+      else
         raise TypeError, "#{value.class} can't be coerced into #{self.class}"
       end
-      @timestamp = BigDecimal(value, _bigd_precision)
     end
+    @timestamp
   end
 
   def _bigd_precision
@@ -126,26 +139,8 @@ class TimestampNS
   include TimestampNumeric
 
   def initialize(time_in=nil)
-    if time_in.nil?
-      # convert the current time to nano-seconds since epoch,
-      # only if @time_ns is not initialized
-      time_ns = time_to_ns(Time.now)
-    else
-      if time_in.is_a?(Time)
-        time_ns = time_to_ns(time_in)
-      elsif time_in.is_a?(String)
-        # translate from format: <hours>:<minutes>:<seconds>.<nanoseconds>
-        tokens  = time_in.split(':')
-        hours   = BigDecimal(tokens[0], 9) * BigDecimal('60.0', 9) * BigDecimal('60.0', 9)
-        minutes = BigDecimal(tokens[1], 9) * BigDecimal('60.0', 9)
-        time_ns = BigDecimal(tokens[2], 9) + minutes + hours
-      elsif time_in.is_a?(Numeric)
-        time_ns = time_in
-      end
-    end
-
     # initialize module var: @timestamp defined in TimestampNumeric module
-    timestamp(time_ns)
+    timestamp(time_in)
   end
 
 end

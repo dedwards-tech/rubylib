@@ -23,7 +23,7 @@ class UnitTest_SshCredential < Test::Unit::TestCase
     assert_equal(ssh_cred.user_group, 'jenkins', "Invalid default user_group value.")
   end
 
-  def test_2_ssh_credential_init_new
+  def test_2a_ssh_credential_init_new
     puts("test case #{__method__.to_s} - exec")
 
     # test with instance initializer using server_ip only
@@ -36,6 +36,22 @@ class UnitTest_SshCredential < Test::Unit::TestCase
     assert_not_nil(ssh_cred.user_name, "uninitialized user_name key")
     assert_not_nil(ssh_cred.user_pwd, "uninitialized user_pwd key")
     assert_not_nil(ssh_cred.user_group, "uninitialized user_group key")
+
+    assert_equal(ssh_cred.user_name, 'jenkins', "Invalid user_name value.")
+    assert_equal(ssh_cred.user_pwd, '123456', "Invalid user_pwd value.")
+    assert_equal(ssh_cred.user_group, 'jenkins', "Invalid default user_group value.")
+
+    # this should NOT assert
+    # TODO: add use of assert_not_raised
+    ssh_cred.chk_ssh_credential
+  end
+
+  def test_2b_ssh_credential_init_new
+    puts("test case #{__method__.to_s} - exec")
+
+    # test with instance initializer using server_ip only
+    ssh_cred = SshCredential.new(server_ip:'192.168.100', user_name:'jenkins', user_pwd:'123456')
+    assert_not_nil(ssh_cred.server_ip, "uninitialized server_ip key")
 
     assert_equal(ssh_cred.user_name, 'jenkins', "Invalid user_name value.")
     assert_equal(ssh_cred.user_pwd, '123456', "Invalid user_pwd value.")
