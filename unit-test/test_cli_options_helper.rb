@@ -3,7 +3,7 @@ require_relative File.join('..', 'cli_options_helper')
 
 class UnitTest_CliOptionsHelper < Test::Unit::TestCase
   def test_1_cli_helper_simple
-    my_cli = CliHelper.new
+    my_cli = CliOptionsHelper.new
     my_cli.new_simple('t_var1', 'tvar1_value', '--tvar1 [STR]',
                       'Test1-tvar1 Unit Test var')
     argv = ['--tvar1', 'argv_value1']
@@ -12,7 +12,7 @@ class UnitTest_CliOptionsHelper < Test::Unit::TestCase
   end
 
   def test_2_cli_helper_with_block
-    my_cli = CliHelper.new
+    my_cli = CliOptionsHelper.new
     my_cli.new_simple('t_var2', 'tvar2_value', '--tvar2 [STR]',
                       'Test2-tvar2 Unit Test var') do |opt_arg|
       assert_equal('argv_value2', my_cli.get_value(opt_arg), 'ERR: t_var2 arg value mismatch')
@@ -24,7 +24,7 @@ class UnitTest_CliOptionsHelper < Test::Unit::TestCase
   end
 
   def test_3_cli_helper_with_reject
-    my_cli = CliHelper.new
+    my_cli = CliOptionsHelper.new
     my_cli.new_simple('t_var3', 'tvar3_value', '--tvar3 [STR]',
                       'Test3-tvar3 Unit Test var') do |opt_arg|
       value = my_cli.get_value(opt_arg)
@@ -40,7 +40,7 @@ class UnitTest_CliOptionsHelper < Test::Unit::TestCase
   end
 
   def test_4_cli_helper_no_args
-    my_cli = CliHelper.new
+    my_cli = CliOptionsHelper.new
     my_cli.new_simple('t_var4', 'tvar4_value', '--tvar4 [STR]',
                       'Test4-tvar4 Unit Test var')
     argv = []
@@ -49,7 +49,7 @@ class UnitTest_CliOptionsHelper < Test::Unit::TestCase
   end
 
   def test_5_cli_helper_invalid_arg
-    my_cli = CliHelper.new
+    my_cli = CliOptionsHelper.new
     my_cli.new_simple('t_var5', 'tvar5_value', '--tvar5 [STR]',
                       'Test5-tvar5 Unit Test var')
     argv = ['--no-arg', 'testing123']
