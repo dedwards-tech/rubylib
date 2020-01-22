@@ -110,12 +110,11 @@ class UnitTest_TimestampNS < Test::Unit::TestCase
 
     # integer arithmatic
     assert_equal(t_now, t_now / 1, "failed divide and compare integer: t_now == t_now / 1")
-    assert_equal(0, 1 / t_now, "failed divide and compare integer: 1 / t_now == 0")
+    assert_equal(0, 1 / t_now.to_i, "failed divide and compare integer: 1 / t_now == 0")
 
     # float arithmatic - this is tricky because float is extremely inaccurate.
     # a single nanosecond difference can lose precision!!!
     assert_equal(t_now, t_now / BigDecimal(1.0, 16), "failed divide and compare BigDecimal: t_now == t_now / 1.0")
-    assert_equal(0, BigDecimal(1.0, 16) / t_now, "failed divide and compare BigDecimal: 1.0 / t_now == 0")
 
     assert_block("failed divide and compare: t_now / 1 == t_now") do
       puts("divide: t_now (#{t_now}) / 1 = #{t_now / 1}")
