@@ -18,7 +18,7 @@ module TimestampNumeric
         @timestamp = time_to_ns(value)
       elsif value.is_a?(String)
         # translate from format: <hours>:<minutes>:<seconds>.<nanoseconds>
-        tokens  = time_in.split(':')
+        tokens  = value.split(':')
         hours   = BigDecimal(tokens[0], 9) * BigDecimal('60.0', 9) * BigDecimal('60.0', 9)
         minutes = BigDecimal(tokens[1], 9) * BigDecimal('60.0', 9)
         @timestamp = BigDecimal(tokens[2], 9) + minutes + hours
