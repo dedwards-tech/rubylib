@@ -27,8 +27,6 @@ module ShellExec
     console_vars.bin_output = value
   end
 
-  # TODO: can I supply a block of code to put between the begin and rescue?
-
   def new_shell(**opts)
     bin_output
     # called once per init, sets "global" options, which can be overridden

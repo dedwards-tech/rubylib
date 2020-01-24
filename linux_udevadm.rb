@@ -10,7 +10,7 @@ class LinuxUdevadmHelper < LinuxExecHelper
     @kernel = version
 
     # set the version string to udevadm version
-    ret_str, exit_code = _exec("udevadm --version")
+    ret_str, exit_code = cmd_exec("udevadm --version")
     if exit_code == 0
       @version = ret_str.strip.chomp
     else
@@ -28,7 +28,7 @@ class LinuxUdevadmHelper < LinuxExecHelper
     what      = opts.fetch(:what, 'all')
     hash_data = { :version => version, :path => nil, :name => nil, :info => {} }
 
-    ret_str, exit_code = _exec("udevadm info -q #{what} -n #{dev_node}", opts)
+    ret_str, exit_code = cmd_exec("udevadm info -q #{what} -n #{dev_node}", opts)
     if exit_code == 0
       props_list      = ret_str.split("\n")
       props_list.each do |prop_line|
@@ -97,7 +97,7 @@ class LinuxUdevadmHelper < LinuxExecHelper
   #
   def info_walk_by_path(dev_path, **opts)
     hash_data = { :version => version, :dev_data => [] }
-    ret_str, exit_code = _exec("udevadm info -a -p #{dev_path}", opts)
+    ret_str, exit_code = cmd_exec("udevadm info -a -p #{dev_path}", opts)
     if exit_code == 0
       segment_data = nil
       props_list   = ret_str.split("\n")

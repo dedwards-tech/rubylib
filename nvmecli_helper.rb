@@ -1,11 +1,11 @@
 require_relative 'linux_udevadm'
 
-class NvmeCliHelper
+class NvmeCliHelper < LinuxExecHelper
   attr_accessor :dev_list
-  attr_reader :sn_list
-  attr_reader :max_timeout
-  attr_reader :ns_alloc_b
-  attr_reader :udevadm_cli
+  attr_reader   :sn_list
+  attr_reader   :max_timeout
+  attr_reader   :ns_alloc_b
+  attr_reader   :udevadm_cli
 
   def initialize(opts={})
     @dev_list    = []
@@ -15,24 +15,23 @@ class NvmeCliHelper
     # allow for skipping of device scan on remote host during init
     skip_find    = opts.fetch(:skip_find,   false)
 
-    # default APL allocation unit for namespaces is 1GB, allow for override
-    # TODO: make this based on some product family identifier like CSDP, CDRDP, etc.
+    # For drives that have an allocation boundary for namespaces we are
+    # allocating on 1GB boundaries.  The 'ns_alloc_bytes' parameter allows
+    # for override of this default.
     #
-    @ns_alloc_b  = opts.fetch(:ns_alloc_bytes, 1073741824)
+    @ns_alloc_b  = opts.fetch(:ns_alloc_bytes, 1024*1024*1024)
     super(opts)
 
-    tinant_data, exit_code = _exec("sudo nvme --version")
+    nvme_cli_version, exit_code = cmd_exec("sudo nvme --version")
     if exit_code == 0
-      @version = tinant_data.getraw.strip.chomp
-    else
-      @version = 'unknown'
+      @version = nvme_cli_version.strip.chomp
     end
 
     # allocate a udevadm cli helper, this will re-use the opt[:cmd_exec] option but
     # also supports re-use of opts within various commands that may need to be executed
     # concurrently.
     #
-    @udevadm_cli = GathererLinuxUdevadm.new(opts)
+    @udevadm_cli = LinuxUdevadmHelper.new(opts)
 
     # collect all known system NVMe device information before running any cli commands.
     find_devices() unless skip_find
@@ -57,7 +56,7 @@ class NvmeCliHelper
       success = true
       for ns_id in ns_ids do
         for ctrl_id in ctrl_ids do
-          tinant_out, exit_code = block.call(ns_id, ctrl_id)
+          dont_care, exit_code = block.call(ns_id, ctrl_id)
           if exit_code != 0
             success = false
           end
@@ -86,7 +85,7 @@ class NvmeCliHelper
   # just execute detach namespace command line using strings for namespace id and controller id.
   def detach_ns(dev_node, ns_id, opts={})
     ctrl_id = opts.fetch(:ctrl_ids, "0,1")
-    cmd_out, exit_code = _exec("sudo nvme detach-ns #{dev_node} -n #{ns_id} -c #{ctrl_id}", opts)
+    dont_care, exit_code = cmd_exec("sudo nvme detach-ns #{dev_node} -n #{ns_id} -c #{ctrl_id}", opts)
     exit_code == 0
   end
 
@@ -95,24 +94,23 @@ class NvmeCliHelper
   #
   def attach_ns(dev_node, ns_id, opts={})
     ctrl_id = opts.fetch(:ctrl_ids, "0,1")
-    cmd_out, exit_code = _exec("sudo nvme attach-ns #{dev_node} -n #{ns_id} -c #{ctrl_id}", opts)
+    dont_care, exit_code = cmd_exec("sudo nvme attach-ns #{dev_node} -n #{ns_id} -c #{ctrl_id}", opts)
     exit_code == 0
   end
 
   def delete_ns(dev_node, ns_id, opts={})
-    cmd_out, exit_code = _exec("sudo nvme delete-ns #{dev_node} -n #{ns_id} --timeout #{max_timeout}", opts)
+    dont_care, exit_code = cmd_exec("sudo nvme delete-ns #{dev_node} -n #{ns_id} --timeout #{max_timeout}", opts)
     exit_code == 0
   end
 
   def identify_ns(dev_node, ns_id, opts={})
-    id_ns_data = { 'dev' => dev_node, 'ns_id' => ns_id, 'blk_dev' => make_ns_dev(dev_node, ns_id) }
-
-    tinant_out, exit_code = _exec("sudo nvme id-ns #{dev_node} -n #{ns_id} -o json", opts)
+    id_ns_data = { 'dev'     => dev_node,
+                   'ns_id'   => ns_id,
+                   'blk_dev' => make_ns_dev(dev_node, ns_id),
+                   'data'    => {} }
+    console_str, exit_code = cmd_exec("sudo nvme id-ns #{dev_node} -n #{ns_id} -o json", opts)
     if exit_code == 0
-      id_ns_data.merge!(JSON.parse(tinant_out.getraw))
-
-      # reflect the parsed data back to the tinant object
-      tinant_out.setdata(id_ns_data)
+      id_ns_data.merge!({ 'data' => JSON.parse(console_str) })
     end
 
     id_ns_data
@@ -130,9 +128,9 @@ class NvmeCliHelper
   def list_ns(dev_node, opts={})
     ns_list = []
 
-    tinant_out, exit_code = _exec("sudo nvme list-ns #{dev_node}", opts)
+    console_str, exit_code = cmd_exec("sudo nvme list-ns #{dev_node}", opts)
     if exit_code == 0
-      ret_lines = tinant_out.getraw.split("\n")
+      ret_lines = console_str.split("\n")
       ret_lines.each do |ret_line|
         tokens = ret_line.split(":")
         if tokens.count == 2
@@ -144,8 +142,7 @@ class NvmeCliHelper
           log.warn { "unrecognized token string (IGNORING): #{ret_line}" }
         end
       end
-      # reflect the parsed data back to the tinant object
-      tinant_out.setdata(ns_list)
+      ns_list
     end
 
     ns_list
@@ -187,7 +184,7 @@ class NvmeCliHelper
       cmd_str  = "sudo nvme create-ns #{dev_node} --nsze #{nsze} --ncap #{tcap} --flbas #{flbas} "
       cmd_str += "--dps #{dps} --nmic #{nmic} --timeout #{max_timeout}"
 
-      tinant_out, exit_code = _exec(cmd_str, opts)
+      done_care, exit_code = cmd_exec(cmd_str, opts)
       success = exit_code == 0
     end
 
@@ -198,7 +195,7 @@ class NvmeCliHelper
     success   = false
     dev_data  = fetch(dev_node)
     unless dev_data.nil?
-      tinant_out, exit_code = _exec("sudo nvme ns-rescan #{dev_node}", opts)
+      dont_care, exit_code = _exec("sudo nvme ns-rescan #{dev_node}", opts)
       success = exit_code == 0
     end
     success
@@ -225,12 +222,12 @@ class NvmeCliHelper
   def get_lspci(pci_bdf, opts={})
     pci_data = { 'pci_bdf' => pci_bdf, 'wwid' => 'unknown' }
 
-    tinant_out, exit_code = _exec("sudo lspci -v -s #{pci_bdf} | grep 'Device Serial Number'", opts)
+    console_str, exit_code = _exec("sudo lspci -v -s #{pci_bdf} | grep 'Device Serial Number'", opts)
     if exit_code == 0
       # sample output:
       #   Capabilities: [140] Device Serial Number 55-cd-2e-41-4f-85-6c-47
       #
-      tokens = tinant_out.getraw.strip.split(':')
+      tokens = console_str.strip.split(':')
       if tokens.count > 1
         tokens = tokens[1].split(' ')
         tokens.each do |token|
@@ -238,7 +235,6 @@ class NvmeCliHelper
             # all we want is the 8 byte PCIe device serial number - which is the drive WWID
             # and remove the dashes '-' between numbers
             pci_data['wwid'] = token.strip.gsub('-', '').upcase
-            tinant_out.setdata(pci_data)
             break
           end
         end
@@ -324,8 +320,8 @@ class NvmeCliHelper
       end
 
       # There should only be one data set per controller id, so dev_sn is a list of hashes
-      # containing specific controller data.  Dual Host + Dual Port systems will have only one entry
-      # where Single Host + Dual Port systems will have 2 entries.
+      # containing specific controller data.  Devices with multiple controllers will have
+      # one or more id's starting at 0; but a host may not see ALL controllers.
       #
       sn_data.merge!({ "#{ctrl_id}" => ctrl_data })
     end
@@ -336,28 +332,24 @@ class NvmeCliHelper
   def find_devices(opts={})
     # wipe the master lists in case this is called multiple times.
     @dev_list.clear
-    @tinant_list.clear
 
     # grab a list of only char device nodes in the form of /dev/nvme?? (no namespaces)
-    tinant_data, exit_code = _exec("sudo find /dev/ -type c -name 'nvme*' | grep '/dev/nvme'", opts)
-    raw_out                = tinant_data.getraw
-    unless raw_out.nil?
-      device_nodes           = raw_out.split("\n")
-      log.info { "found #{device_nodes.count} devices on host #{cmd_exec.call("hostname")}" }
+    console_str, exit_code = cmd_exec("sudo find /dev/ -type c -name 'nvme*' | grep '/dev/nvme'", opts)
+    unless console_str.nil?
+      device_nodes = console_str.split("\n")
+      log.info { "found #{device_nodes.count} devices on host #{cmd_exec("hostname")}" }
 
       # take that list of dev nodes, grab the id controller information and parse it into
       # a key / value pair structure.
       for dev_node in device_nodes
         node_data             = { 'dev' => dev_node }
-        ta_id_ctrl, exit_code = _exec("sudo nvme id-ctrl #{dev_node} -o json", opts)
+        ta_id_ctrl, exit_code = cmd_exec("sudo nvme id-ctrl #{dev_node} -o json", opts)
         if exit_code == 0
-          node_data.merge!(JSON.parse(ta_id_ctrl.getraw))
+          node_data.merge!({ 'data' => JSON.parse(ta_id_ctrl.getraw) })
         end
 
         # check if the device serial number is in the list to scan details for
         if is_sn_match(node_data['sn'].strip)
-          # now save the parsed data to the tinant "data" field for this command
-          ta_id_ctrl.setdata(node_data)
           @dev_list.push(node_data)
           log.info { "FOUND device: #{node_data['dev']}, sn: #{node_data['sn'].strip}" }
         else
