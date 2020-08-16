@@ -3,7 +3,7 @@ require_relative File.join('..', 'ssh_helper')
 
 class UnitTest_SshHelper < Test::Unit::TestCase
   def ssh_cred_jenkins
-    @ssh_cred_jenkins ||= SshCredential.new(server_ip:'10.132.69.7', user_name:'jenkins', user_pwd:'123456')
+    @ssh_cred_jenkins ||= SshCredential.new(server_ip:'localhost', user_name:'jenkins', user_pwd:'123456')
   end
 
   def test_ssh_init_and_execute

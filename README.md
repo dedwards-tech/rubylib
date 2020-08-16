@@ -1,13 +1,18 @@
 # README: `rubylib`
 
-Completed rev 0.10 1/24/2020 - unit tests functional but basic.  Need more use cases
-  to round out the design and implementation but its working well at the moment.
-
 I've refactored my common ruby coding scripts to make use of modules and added at least
 the minimum unit test capabilities to all the scripts - they should be 1:1 with ruby 
 files.  I've attempted to make shell execution extensible between local linux shell and
 remote ssh shell so they appear seamless in their use model.  As such, refactoring included
 the ssh and scp wrappers.
+
+## Revision History
+
+* 0.11.0000 - (8/15/2020) completed refactoring and code cleanup, unit-test and udevadm 
+still needs work but this is ready to write some code against to flush out remaining problems.
+* 0.10.0000 - (1/24/2020) unit tests functional but basic.  Need more use cases to 
+round out the design and implementation but its working well at the moment.
+
 
 ## Design Goals
 
